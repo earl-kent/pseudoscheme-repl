@@ -1,0 +1,53 @@
+
+
+
+
+
+Note, use shift-tab to see call structure without text content.
+* Call sequences
+
+* Command: slime
+
+
+
+** event: slime-net-filter
+   "0003E9(:return (:ok (:pid 2724052 :style :spawn :encoding
+   (:coding-systems (\"utf-8-unix\" \"iso-latin-1-unix\"))
+   :lisp-implementation (:type \"SBCL\" :name \"sbcl\" :version
+   \"2.6.0.49-4c0c89373\" :program \"/usr/local/bin/sbcl\") :machine
+   (:instance \"hades-canyon\" :type \"X86-64\" :version \"Intel(R)
+   Core(TM) i7-8809G CPU @ 3.10GHz\") :features (:swank :quicklisp
+   :asdf3.3 :asdf3.2 :asdf3.1 :asdf3 :asdf2 :asdf :os-unix
+   :non-base-chars-exist-p :asdf-unicode :arena-allocator :x86-64
+   :gencgc :64-bit :ansi-cl :common-lisp :elf :ieee-floating-point
+   :linux :little-endian :package-local-nicknames :sb-ldb
+   :sb-package-locks :sb-thread :sb-unicode :sbcl :unix) :modules
+   (\"SWANK-ARGLISTS\" \"SWANK-FANCY-INSPECTOR\" \"SWANK-FUZZY\"
+   \"SWANK-C-P-C\" \"SWANK-UTIL\" \"SWANK-MACROSTEP\"
+   \"SWANK-PRESENTATIONS\" \"SWANK-REPL\" \"SWANK-PACKAGE-FU\"
+   \"SWANK-TRACE-DIALOG\" \"SWANK-INDENTATION\" \"SB-CLTL2\"
+   \"SB-INTROSPECT\" \"SB-BSD-SOCKETS\" \"SB-POSIX\" \"ASDF\" \"asdf\"
+   \"UIOP\" \"uiop\") :package (:name \"COMMON-LISP-USER\" :prompt
+   \"CL-USER\") :version \"2.31\")) 1)"
+
+*** slime-process-available-input
+
+**** slime-dispatch-event
+((:return
+  (:ok (:pid 2724052 :style :spawn :encoding
+	     (:coding-systems ("utf-8-unix" "iso-latin-1-unix"))
+	     :lisp-implementation (:type "SBCL" :name "sbcl" :version "2.6.0.49-4c0c89373" :program "/usr/local/bin/sbcl")
+	     :machine (:instance "hades-canyon" :type "X86-64" :version "Intel(R) Core(TM) i7-8809G CPU @ 3.10GHz")
+	     :features (:swank :quicklisp :asdf3.3 :asdf3.2 :asdf3.1 :asdf3 :asdf2 :asdf :os-unix :non-base-chars-exist-p :asdf-unicode :arena-allocator :x86-64 :gencgc :64-bit :ansi-cl :common-lisp :elf :ieee-floating-point :linux :little-endian :package-local-nicknames :sb-ldb :sb-package-locks :sb-thread :sb-unicode :sbcl :unix)
+	     :modules ("SWANK-ARGLISTS" "SWANK-FANCY-INSPECTOR" "SWANK-FUZZY" "SWANK-C-P-C" "SWANK-UTIL" "SWANK-MACROSTEP" "SWANK-PRESENTATIONS" "SWANK-REPL" "SWANK-PACKAGE-FU" "SWANK-TRACE-DIALOG" "SWANK-INDENTATION" "SB-CLTL2" "SB-INTROSPECT" "SB-BSD-SOCKETS" "SB-POSIX" "ASDF" "asdf" "UIOP" "uiop")
+	     :package (:name "COMMON-LISP-USER" :prompt "CL-USER")
+	     :version "2.31")) 1)
+ #<process SLIME Lisp>)
+***** slime-set-connection-info
+****** run-hooks
+******* slime-repl-connected-hook-function
+******** slime-hide-inferior-lisp-buffer
+********* slime-output-buffer
+
+
+** slime-output-buffer

@@ -185,10 +185,9 @@ input start, return it.  Otherwise, return 'pseudoscheme-repl-input-start-mark'.
     (let ((welcome (concat "; PSEUDOSCHEME " pseudoscheme-version)))
       (insert welcome))))
 
-(defun pseudoscheme-init-output-buffer (connection)
+(defun pseudoscheme-init-output-buffer ()
   (with-current-buffer (pseudoscheme-output-buffer t)
-    (setq pseudoscheme-buffer-connection connection
-          pseudoscheme-repl-directory-stack '()
+    (setq pseudoscheme-repl-directory-stack '()
           pseudoscheme-repl-package-stack '())
     (pseudoscheme-repl-update-banner)))
 
@@ -1727,14 +1726,16 @@ expansion will be added to the REPL's history.)"
 	(car candidates)
 	(error "Can't find suitable coding-system"))))
 
+;; Unlike slime we call this function directly from the emacs user
+;; function: pseudoscheme.
 (defun pseudoscheme-repl-connected-hook-function ()
-  (cl-destructuring-bind (package prompt)
-      (let ((pseudoscheme-current-thread t))
-	(pseudoscheme-eval `(swank-repl:create-repl nil)))
-    (setf (pseudoscheme-lisp-package) package)
-    (setf (pseudoscheme-lisp-package-prompt-string) prompt))
-  (pseudoscheme-hide-inferior-lisp-buffer)
-  (pseudoscheme-init-output-buffer (pseudoscheme-connection)))
+  ;; (cl-destructuring-bind (package prompt)
+  ;;     (let ((pseudoscheme-current-thread t))
+  ;; 	(pseudoscheme-eval `(swank-repl:create-repl nil)))
+  ;;   (setf (pseudoscheme-lisp-package) package)
+  ;;   (setf (pseudoscheme-lisp-package-prompt-string) prompt))
+  ;; (pseudoscheme-hide-inferior-lisp-buffer)
+  (pseudoscheme-init-output-buffer)
 
 (defun pseudoscheme-repl-event-hook-function (event)
   (pseudoscheme-dcase event
@@ -1771,7 +1772,10 @@ If the current buffer is not a REPL, don't do anything."
 
 (defun pseudoscheme-repl-add-hooks ()
   (add-hook 'pseudoscheme-event-hooks 'pseudoscheme-repl-event-hook-function)
-  (add-hook 'pseudoscheme-connected-hook 'pseudoscheme-repl-connected-hook-function)
+  ;; This kicks off the repl, since we piggyback on slime, we call it
+  ;; directly.
+  ;; (add-hook 'pseudoscheme-connected-hook
+  ;; 	    'pseudoscheme-repl-connected-hook-function)
   (add-hook 'pseudoscheme-cycle-connections-hook
             'pseudoscheme-change-repl-to-default-connection))
 

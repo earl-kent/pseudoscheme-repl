@@ -1316,7 +1316,7 @@ reading input.  The result is a string (\"\" if no input was given)."
 ;; Use slime's version
 ;; - slime-bogus-completion-alist
 
-(defun slime-simple-completions (prefix)
+(defun pseudoscheme-simple-completions (prefix)
   (cl-destructuring-bind (completions _partial)
       (let ((pseudoscheme-current-thread t))
         (slime-eval
@@ -1351,6 +1351,135 @@ reading input.  The result is a string (\"\" if no input was given)."
 
 
 
+
+
+;;;;; Connection listing
+
+(defun pseudoscheme-move-point (position)
+  "Move point in the current buffer and in the window the buffer is displayed."
+  (let ((window (get-buffer-window (current-buffer) t)))
+    (goto-char position)
+    (when window
+      (set-window-point window position))))
+
+(defun pseudoscheme-display-threads (threads)
+  (with-current-buffer pseudoscheme-threads-buffer-name
+    (let* ((inhibit-read-only t)
+           (old-thread-id (get-text-property (point) 'thread-id))
+           (old-line (line-number-at-pos))
+           (old-column (current-column)))
+      (erase-buffer)
+      (pseudoscheme-insert-threads threads)
+      (let ((new-position (cl-position old-thread-id (cdr threads)
+                                       :key #'car :test #'equal)))
+        (goto-char (point-min))
+        (forward-line (or new-position (1- old-line)))
+        (move-to-column old-column)
+        (pseudoscheme-move-point (point))))))
+
+(defun pseudoscheme-transpose-lists (list-of-lists)
+  (let ((ncols (length (car list-of-lists))))
+    (cl-loop for col-index below ncols
+             collect (cl-loop for row in list-of-lists
+                              collect (elt row col-index)))))
+
+(defun pseudoscheme-insert-table-row (line line-props col-props col-widths)
+  (pseudoscheme-propertize-region line-props
+    (cl-loop for string in line
+             for col-prop in col-props
+             for width in col-widths do
+             (pseudoscheme-insert-propertized col-prop string)
+             (insert-char ?\ (- width (length string))))))
+
+(defun pseudoscheme-insert-table (rows header row-properties column-properties)
+  "Insert a \"table\" so that the columns are nicely aligned."
+  (let* ((ncols (length header))
+         (lines (cons header rows))
+         (widths (cl-loop for columns in (pseudoscheme-transpose-lists lines)
+                          collect (1+ (cl-loop for cell in columns
+                                               maximize (length cell)))))
+         (header-line (with-temp-buffer
+                        (pseudoscheme-insert-table-row
+                         header nil (make-list ncols nil) widths)
+                        (buffer-string))))
+    (cond ((boundp 'header-line-format)
+           (setq header-line-format header-line))
+          (t (insert header-line "\n")))
+    (cl-loop for line in rows  for line-props in row-properties do
+             (pseudoscheme-insert-table-row line line-props column-properties widths)
+             (insert "\n"))))
+
+(defvar pseudoscheme-threads-table-properties
+  '(nil (face bold)))
+
+(defun pseudoscheme-insert-threads (threads)
+  (let* ((labels (car threads))
+         (threads (cdr threads))
+         (header (cl-loop for label in labels collect
+                          (capitalize (substring (symbol-name label) 1))))
+         (rows (cl-loop for thread in threads collect
+                        (cl-loop for prop in thread collect
+                                 (format "%s" prop))))
+         (line-props (cl-loop for (id) in threads for i from 0
+                              collect `(thread-index ,i thread-id ,id)))
+         (col-props (cl-loop for nil in labels for i from 0 collect
+                             (nth i pseudoscheme-threads-table-properties))))
+    (pseudoscheme-insert-table rows header line-props col-props)))
+
+
+;;;;; Major mode
+
+(define-derived-mode pseudoscheme-thread-control-mode fundamental-mode
+  "Threads"
+  "PSEUDOSCHEME Thread Control Panel Mode.
+
+\\{pseudoscheme-thread-control-mode-map}
+\\{pseudoscheme-popup-buffer-mode-map}"
+  (when pseudoscheme-truncate-lines
+    (set (make-local-variable 'truncate-lines) t))
+  (setq buffer-undo-list t))
+
+(pseudoscheme-define-keys pseudoscheme-thread-control-mode-map
+  ("a" 'pseudoscheme-thread-attach)
+  ("d" 'pseudoscheme-thread-debug)
+  ("g" 'pseudoscheme-update-threads-buffer)
+  ("k" 'pseudoscheme-thread-kill)
+  ("q" 'pseudoscheme-quit-threads-buffer))
+
+(defun pseudoscheme-thread-kill ()
+  (interactive)
+  (pseudoscheme-eval `(cl:mapc 'swank:kill-nth-thread
+                        ',(pseudoscheme-get-properties 'thread-index)))
+  (call-interactively 'pseudoscheme-update-threads-buffer))
+
+(defun pseudoscheme-get-region-properties (prop start end)
+  (cl-loop for position = (if (get-text-property start prop)
+                              start
+                            (next-single-property-change start prop))
+           then (next-single-property-change position prop)
+           while (<= position end)
+           collect (get-text-property position prop)))
+
+(defun pseudoscheme-get-properties (prop)
+  (if (use-region-p)
+      (pseudoscheme-get-region-properties prop
+                                   (region-beginning)
+                                   (region-end))
+    (let ((value (get-text-property (point) prop)))
+      (when value
+        (list value)))))
+
+(defun pseudoscheme-thread-attach ()
+  (interactive)
+  (let ((id (get-text-property (point) 'thread-index))
+        (file (pseudoscheme-swank-port-file)))
+    (pseudoscheme-eval-async `(swank:start-swank-server-in-thread ,id ,file)))
+  (pseudoscheme-read-port-and-connect nil))
+
+(defun pseudoscheme-thread-debug ()
+  (interactive)
+  (let ((id (get-text-property (point) 'thread-index)))
+    (pseudoscheme-eval-async `(swank:debug-nth-thread ,id))))
 
 
 ;;;;; Connection listing

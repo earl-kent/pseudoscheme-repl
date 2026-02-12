@@ -524,6 +524,20 @@ If `slime-repl-suppress-prompt' is true, does nothing and returns nil."
       (slime-repl-send-input)
       )))
 
+
+
+(defmacro with-typing-test (&rest body)
+  "Create a temporary buffer in a real window and run BODY inside it."
+  `(let ((buf (generate-new-buffer "*typing-test*")))
+    (save-window-excursion
+      (pop-to-buffer (get-buffer "*slime-repl sbcl*"))
+      (insert "\n")
+      ;;(execute-kbd-macro (kbd "RET"))
+      (slime-repl-send-input)
+      )))
+
+
+
 (defun my-run-pseudoscheme-tests ()
   (let ((start-buffer (current-buffer))
 	(test-buffer (get-buffer "*pseudoscheme-repl*")))
@@ -639,3 +653,16 @@ slime-repl-buffer
     (case fun
       ('f1 #'my-function1)
       ('f2 #'my-function2))))
+
+
+
+
+
+
+;; examples
+(defun my-example-with-current-buffer ()
+  (with-current-buffer "*slime-repl sbcl*"
+    (cl-destructuring-bind (package prompt)
+	(let ((slime-current-thread t))
+	  (slime-eval `(swank-repl:create-repl nil)))
+      (list package prompt))))
