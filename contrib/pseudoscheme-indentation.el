@@ -1,10 +1,10 @@
 (require 'pseudoscheme)
-(require 'pseudoscheme-cl-indent)
+(require 'pseudoscheme-scheme-indent)
 (require 'cl-lib)
 
-(define-slime-contrib pseudoscheme-indentation
-  "Contrib interfacing `pseudoscheme-cl-indent' and SLIME."
-  (:swank-dependencies swank-indentation)
+(define-pseudoscheme-contrib pseudoscheme-indentation
+  "Contrib interfacing `pseudoscheme-scheme-indent' and PSEUDOSCHEME."
+  (:swank-dependencies pseudoscheme-indentation)
   (:on-load))
 
 (defun pseudoscheme-update-system-indentation (symbol indent packages)
