@@ -163,14 +163,46 @@ positions before and after executing BODY."
 
 ;; -----------------------------------------------------------------------------
 
+
+;; The slime start up sequence somewhat complex -- it overlays the
+;; standard emacs process for initiating a mode with the specific
+;; needs of establinging network communication with the remote cl
+;; session you're connecting. Below is the call sequence.
+;;
+;; Note the reason for slime --> slime-start* --> slime-start are
+;; inscrutable.
+;;
+;; - slime (autoload)
+;; - slime-start*
+;; - slime-start
+;; - slime-maybe-start-lisp
+;; - slime-inferior-connect
+;; - slime-read-port-and-connect
+;; - slime-setup-connection
+;; - slime-init-connection-state (send swank:connection-info)
+;;
+;; then we retrieve the message
+;;
+;; - event: slime-net-filter
+;; - slime-process-available-input
+;; - slime-dispatch-event
+;; - slime-set-connection-info (async callback)
+;; - run-hooks
+;; - slime-repl-connected-hook-function
+;;   (synchronous: (swank-repl:create-repl nil))
+;; - slime-hide-inferior-lisp-buffer
+;; - slime-output-buffer
+;;
+;; Most of this machinery is not needed for the Pseudoscheme REPL
+;; since piggy-backs on top of slime.
+
+;; This should probably be called directly from slime (autoload).
 (cl-defun pseudoscheme-start ()
   "We assume that slime has been started and the pseudoscheme
 environment alreadyd loaded."
     (when (pseudoscheme-bytecode-stale-p)
       (pseudoscheme-urge-bytecode-recompile))
-    (let ((proc (pseudoscheme-maybe-start-lisp)))
-      ;; (pseudoscheme-inferior-connect proc args)
-      (pop-to-buffer (process-buffer (slime-current-connection)))))
+    (slime-output-buffer))
 
 (defun pseudoscheme-start* ()
   (apply #'pseudoscheme-start))
@@ -183,34 +215,14 @@ environment alreadyd loaded."
 ;;; Starting the inferior Lisp and loading Swank:
 
 
-(defun pseudoscheme-maybe-start-lisp (program program-args env directory)
-  "Return existing inferior lisp process."
-  (cond ((not (comint-check-proc "*inferior-lisp*"))
-         (error "No lisp running"))
-        (;; (pseudoscheme-reinitialize-inferior-lisp-p program program-args env buffer)
-         t
-         (let ((conn (cl-find (get-buffer-process buffer)
-                              pseudoscheme-net-processes
-                              :key #'pseudoscheme-inferior-process)))
-           (when conn
-             (pseudoscheme-net-close conn)))
-         (get-buffer-process buffer))
-        ;; (t (pseudoscheme-start-lisp program program-args env directory
-        ;;                      (generate-new-buffer-name buffer)))
-        ))
-
 ;; We rely on slime for the following:
+;; - slime-maybe-start-lisp
 ;; - slime-reinitialize-inferior-lisp-p
 ;; - slime-inferior-process-start-hook
 ;; - slime-inferior-lisp-connected
 ;; - slime-terminal-output-function
 ;; - slime-start-lisp
-
-(defun pseudoscheme-inferior-connect ()
-  "Start a Swank server in the inferior Lisp and connect."
-  ;; (slime-delete-swank-port-file 'quiet)
-  ;; (slime-start-swank-server process args)
-  (pseudoscheme-read-port-and-connect))
+;; - pseudoscheme-inferior-connect
 
 ;; We rely on slime for for the following
 ;; - slime-inferior-lisp-args
@@ -220,9 +232,8 @@ environment alreadyd loaded."
 ;; - slime-swank-port-file
 ;; - slime-temp-directory
 ;; - slime-delete-swank-port-file
+;; - slime-read-port-and-connect
 
-(defun pseudoscheme-read-port-and-connect ()
-  (pseudoscheme-attempt-connection))
 
 (defun pseudoscheme-attempt-connection ()
   (let ((current-connection (slime-current-connection)))

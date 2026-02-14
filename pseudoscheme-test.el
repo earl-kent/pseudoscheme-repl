@@ -666,3 +666,54 @@ slime-repl-buffer
 	(let ((slime-current-thread t))
 	  (slime-eval `(swank-repl:create-repl nil)))
       (list package prompt))))
+
+
+;; Create a pedegogical example.
+
+
+(defvar my-slime-response-handlers '())
+(defvar my-slime-stack-eval-tags '())
+(defvar my-slime-continuation-counter 0)
+
+
+
+
+
+(defun my-slime-asynchronous-call ()
+
+ (defun  my-slime-synchronous-call ()
+  (let* ((tag (cl-gensym (format "my-slime-result-%d-"
+                                 (1+ (slime-continuation-counter))))))
+    (catch tag
+      (push
+       (lambda (result)
+	 (throw tag (list #'identity value))
+
+
+(defun my-slime-eval (sexp &optional package)
+  "Evaluate EXPR on the superior Lisp and return the result."
+  (when (null package) (setq package (slime-current-package)))
+  (let* ((tag (cl-gensym (format "slime-result-%d-"
+                                 (1+ (slime-continuation-counter)))))
+	 (slime-stack-eval-tags (cons tag slime-stack-eval-tags)))
+    (apply
+     #'funcall
+     (catch tag
+       (slime-rex (tag sexp)
+           (sexp package)
+         ((:ok value)
+          (unless (member tag slime-stack-eval-tags)
+            (error "Reply to canceled synchronous eval request tag=%S sexp=%S"
+                   tag sexp))
+          (throw tag (list #'identity value)))
+         ((:abort _condition)
+          (throw tag (list #'error "Synchronous Lisp Evaluation aborted"))))
+       (let ((debug-on-quit t)
+             (inhibit-quit nil)
+             (conn (slime-connection)))
+         (while t
+           (unless (eq (process-status conn) 'open)
+             (error "Lisp connection closed unexpectedly"))
+	   (message "I doubt this shows up only once")
+           (accept-process-output nil 0.01)
+	   ))))))

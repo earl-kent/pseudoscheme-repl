@@ -1735,7 +1735,7 @@ expansion will be added to the REPL's history.)"
   ;;   (setf (pseudoscheme-lisp-package) package)
   ;;   (setf (pseudoscheme-lisp-package-prompt-string) prompt))
   ;; (pseudoscheme-hide-inferior-lisp-buffer)
-  (pseudoscheme-init-output-buffer)
+  (pseudoscheme-init-output-buffer))
 
 (defun pseudoscheme-repl-event-hook-function (event)
   (pseudoscheme-dcase event
