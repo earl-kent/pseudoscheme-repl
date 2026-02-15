@@ -1771,7 +1771,8 @@ If the current buffer is not a REPL, don't do anything."
 ;; - pseudoscheme-repl-find-buffer-package
 
 (defun pseudoscheme-repl-add-hooks ()
-  (add-hook 'pseudoscheme-event-hooks 'pseudoscheme-repl-event-hook-function)
+  ;; (add-hook 'pseudoscheme-event-hooks
+  ;; 	    'pseudoscheme-repl-event-hook-function)
   ;; This kicks off the repl, since we piggyback on slime, we call it
   ;; directly.
   ;; (add-hook 'pseudoscheme-connected-hook
@@ -1780,7 +1781,8 @@ If the current buffer is not a REPL, don't do anything."
             'pseudoscheme-change-repl-to-default-connection))
 
 (defun pseudoscheme-repl-remove-hooks ()
-  (remove-hook 'pseudoscheme-event-hooks 'pseudoscheme-repl-event-hook-function)
+  ;; (remove-hook 'pseudoscheme-event-hooks
+  ;; 	       'pseudoscheme-repl-event-hook-function)
   (remove-hook 'pseudoscheme-connected-hook 'pseudoscheme-repl-connected-hook-function)
   (remove-hook 'pseudoscheme-cycle-connections-hook
                'pseudoscheme-change-repl-to-default-connection))

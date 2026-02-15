@@ -202,20 +202,45 @@ positions before and after executing BODY."
 environment alreadyd loaded."
     (when (pseudoscheme-bytecode-stale-p)
       (pseudoscheme-urge-bytecode-recompile))
-    (slime-output-buffer))
+    (pop-to-buffer (pseudoscheme-output-buffer)))
 
 (defun pseudoscheme-start* ()
-  (apply #'pseudoscheme-start))
+  (apply #'pseudoscheme-start '()))
 
+;; Not needed for pseudoscheme, piggy back on slime.
+;; - slime-connect
+;; - slime-start-and-init
+;; - slime-connect-retry-timer
 
-;; -----------------------------------------------------------------------------
+;;; Recompiling bytecode:
 
-;; -----------------------------------------------------------------------------
+(defun pseudoscheme-bytecode-stale-p ()
+  "Return true if slime.elc is older than slime.el."
+  (let ((libfile (locate-library "pseudoscheme")))
+    (when libfile
+      (let* ((basename (file-name-sans-extension libfile))
+             (sourcefile (concat basename ".el"))
+             (bytefile (concat basename ".elc")))
+        (and (file-exists-p bytefile)
+             (file-newer-than-file-p sourcefile bytefile))))))
 
-;;; Starting the inferior Lisp and loading Swank:
+(defun pseudoscheme-recompile-bytecode ()
+  "Recompile and reload slime."
+  (interactive)
+  (let ((sourcefile
+         (concat (file-name-sans-extension
+                  (locate-library "pseudoscheme-recompile-bytecode"))
+                 ".el")))
+    (byte-compile-file sourcefile t)))
 
+(defun pseudoscheme-urge-bytecode-recompile ()
+  "Urge the user to recompile slime.elc.
+Return true if we have been given permission to continue."
+  (when (y-or-n-p "pseudoscheme.elc is older than source.  Recompile first? ")
+    (pseudoscheme-recompile-bytecode)))
 
 ;; We rely on slime for the following:
+;; - pseudoscheme-abort-connection
 ;; - slime-maybe-start-lisp
 ;; - slime-reinitialize-inferior-lisp-p
 ;; - slime-inferior-process-start-hook
@@ -931,6 +956,7 @@ fixnum a specific thread."))
 
 (cl-defmacro pseudoscheme-rex ((&rest saved-vars)
                         (sexp &optional
+                              (package "REVISED^4-SCHEME")
                               (thread 'slime-current-thread))
                         &rest continuations)
   "(slime-rex (VAR ...) (SEXP &optional PACKAGE THREAD) CLAUSES ...)
@@ -959,8 +985,8 @@ versions cannot deal with that."
                     collect (cl-etypecase var
                               (symbol (list var var))
                               (cons var)))
-       (slime-dispatch-event
-        (list :emacs-rex ,sexp "PS" ,thread
+       (pseudoscheme-dispatch-event
+        (list :emacs-rex ,sexp ,package ,thread
               (lambda (,result)
                 (slime-dcase ,result
                   ,@continuations)))))))
@@ -1090,7 +1116,19 @@ Debugged requests are ignored."
 (pseudoscheme-def-connection-var pseudoscheme-continuation-counter 0
   "Continuation serial number counter.")
 
-(defvar pseudoscheme-event-hooks)
+
+;; Use slime event hooks and selective disable
+;; - pseudoscheme-event-hooks)
+
+
+;; Note that we need to use slime in a compatable way. How the slime
+;; RPC works is that A commandis put on the wire via
+;; pseudoscheme-dispatch-event and and a handler is pushed to
+;; slime-rex-continuations. Slime may then respond to messages
+;; asynchronously. When a message comes back with an id corresponding
+;; to the handler, then the handler coresponding to that id is
+;; executed and the handler is removed. Pseudoscheme must maintain
+;; that discipline.
 
 (defun pseudoscheme-dispatch-event (event &optional process)
   ;; (let ((pseudoscheme-dispatching-connection (or process (pseudoscheme-connection))))
@@ -1100,9 +1138,9 @@ Debugged requests are ignored."
            ;; try do use the same discipline as slime
            (when (and (slime-use-sigint-for-interrupt) (slime-busy-p))
              (pseudoscheme-display-oneliner "; pipelined request... %S" form))
-           (let ((id (cl-incf (pseudoscheme-continuation-counter))))
-             (pseudoscheme-send `(:emacs-rex ,form ,package ,thread ,id))
-             (push (cons id continuation) (pseudoscheme-rex-continuations))
+           (let ((id (cl-incf (slime-continuation-counter))))
+             (slime-send `(:emacs-rex ,form ,package ,thread ,id))
+             (push (cons id continuation) (slime-rex-continuations))
              (pseudoscheme--recompute-modelines)))
           ((:return value id)
            (let ((rec (assq id (pseudoscheme-rex-continuations))))
@@ -1551,23 +1589,10 @@ switch-to-buffer."
 
 ;;;; Contrib modules
 
-(defun pseudoscheme-require (module)
-  (cl-pushnew module pseudoscheme-required-modules)
-  (when (pseudoscheme-connected-p)
-    (pseudoscheme-load-contribs)))
-
-(defun pseudoscheme-load-contribs ()
-  (let ((needed (cl-remove-if (lambda (s)
-                                (member (cl-subseq (symbol-name s) 1)
-                                        (mapcar #'downcase
-                                                (pseudoscheme-lisp-modules))))
-                              pseudoscheme-required-modules)))
-    (when needed
-      ;; No asynchronous request because with :SPAWN that could result
-      ;; in the attempt to load modules concurrently which may not be
-      ;; supported by the host Lisp.
-      (setf (pseudoscheme-lisp-modules)
-            (pseudoscheme-eval `(swank:swank-require ',needed))))))
+;; in SLIME this asks swank to load lisp modules, in pseudoscheme it
+;; does nothing.
+;; - pseudoscheme-require
+;; - slime-load-contribs
 
 (cl-defstruct pseudoscheme-contrib
   name
@@ -1599,7 +1624,7 @@ switch-to-buffer."
          (mapc #'funcall ',(mapcar
                             #'pseudoscheme-contrib--enable-fun
                             pseudoscheme-dependencies))
-         (mapc #'pseudoscheme-require ',swank-dependencies)
+         ;; (mapc #'pseudoscheme-require ',swank-dependencies)
          ,@on-load)
        (defun ,(pseudoscheme-contrib--disable-fun name) ()
          ,@on-unload

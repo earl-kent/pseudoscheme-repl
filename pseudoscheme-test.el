@@ -3,7 +3,7 @@
 
 
 
-
+(defvar pseudoscheme-cl-package "REVISED^4-SCHEME")
 
 ;; The first goal is to create a buffer similar to what is seen in
 ;; slime.
@@ -48,6 +48,14 @@
 ;; - slime-repl-insert-prompt
 ;; - slime-output-buffer
 ;; - slime-repl-buffer
+
+
+;; Steps in sending output swank via the repl buffer:
+
+
+
+
+
 
 slime-set-connection-info
 
@@ -584,11 +592,6 @@ If NEWLINE is true then add a newline at the end of the input."
 
 
 
-
-
-
-
-
 (defmacro with-typing-test (&rest body)
   "Create a temporary buffer in a real window and run BODY inside it."
   `(let ((buf (generate-new-buffer "*typing-test*")))
@@ -607,7 +610,7 @@ If NEWLINE is true then add a newline at the end of the input."
 
 ;; (slime-repl-eval-string "\n") -->
 
-(slime-dispatch-event
+'(slime-dispatch-event
         (list :emacs-rex ,sexp ,package ,thread
               (lambda (,result)
                 (slime-dcase ,result
@@ -618,32 +621,17 @@ If NEWLINE is true then add a newline at the end of the input."
 ;;   (:emacs-rex (swank-repl:listener-eval "\n") "COMMON-LISP-USER"
 	    ;; :repl-thread 13)
 
-(:write-string "; No value" :repl-result)
+'(:write-string "; No value" :repl-result)
 
-(:return (:ok nil) 13)
+'(:return (:ok nil) 13)
 
-
-
-
-
-
-get-buffer-create
-
-
-slime-repl-buffer
-
-
-
-
-
-
-(defun global-f1 ()
+(defun my-global-f1 ()
   (funcall (dispatch 'f1)))
 
-(defun global-f2 ()
+(defun my-global-f2 ()
   (funcall (dispatch 'f2)))
 
-(defun dispatch (fun)
+(defun my-dispatch (fun)
   (cl-flet* ((my-function1 ()
                1)
 
@@ -655,10 +643,6 @@ slime-repl-buffer
       ('f2 #'my-function2))))
 
 
-
-
-
-
 ;; examples
 (defun my-example-with-current-buffer ()
   (with-current-buffer "*slime-repl sbcl*"
@@ -668,52 +652,66 @@ slime-repl-buffer
       (list package prompt))))
 
 
-;; Create a pedegogical example.
+(defun my-slime-repl-eval-string (string)
+  (slime-rex ()
+      ( `(swank-repl:listener-eval ,string)
+       (slime-lisp-package))
+    ((:ok result)
+     (slime-repl-insert-result result))
+    ((:abort condition)
+     (slime-repl-show-abort condition))))
 
 
-(defvar my-slime-response-handlers '())
-(defvar my-slime-stack-eval-tags '())
-(defvar my-slime-continuation-counter 0)
+(defun my-pseudoscheme-repl-eval-string (string)
+  (add-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
+  (remove-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+  (pseudoscheme-rex ()
+      ( `(swank-repl:listener-eval ,string)
+	(slime-lisp-package))
+    ((:ok result)
+     (remove-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
+     (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+       (pseudoscheme-repl-insert-result result))
+    ((:abort condition)
+     (remove-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
+     (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+     (pseudoscheme-repl-show-abort condition))))
+
+
+;; ((:write-string "6" :repl-result) #<process SLIME Lisp>)
+
+
+
+
+;;   (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
 
 
 
 
 
-(defun my-slime-asynchronous-call ()
-
- (defun  my-slime-synchronous-call ()
-  (let* ((tag (cl-gensym (format "my-slime-result-%d-"
-                                 (1+ (slime-continuation-counter))))))
-    (catch tag
-      (push
-       (lambda (result)
-	 (throw tag (list #'identity value))
+;; '(form:
+;;   (swank-repl:listener-eval (+ 1 2))
+;;   package: COMMON-LISP,
+;;   thread: t,
+;;   continuation:
 
 
-(defun my-slime-eval (sexp &optional package)
-  "Evaluate EXPR on the superior Lisp and return the result."
-  (when (null package) (setq package (slime-current-package)))
-  (let* ((tag (cl-gensym (format "slime-result-%d-"
-                                 (1+ (slime-continuation-counter)))))
-	 (slime-stack-eval-tags (cons tag slime-stack-eval-tags)))
-    (apply
-     #'funcall
-     (catch tag
-       (slime-rex (tag sexp)
-           (sexp package)
-         ((:ok value)
-          (unless (member tag slime-stack-eval-tags)
-            (error "Reply to canceled synchronous eval request tag=%S sexp=%S"
-                   tag sexp))
-          (throw tag (list #'identity value)))
-         ((:abort _condition)
-          (throw tag (list #'error "Synchronous Lisp Evaluation aborted"))))
-       (let ((debug-on-quit t)
-             (inhibit-quit nil)
-             (conn (slime-connection)))
-         (while t
-           (unless (eq (process-status conn) 'open)
-             (error "Lisp connection closed unexpectedly"))
-	   (message "I doubt this shows up only once")
-           (accept-process-output nil 0.01)
-	   ))))))
+;;   (lambda (return)
+;;     (let* ((op (car return))
+;; 	   (--cl-rest-- (cdr return)))
+;;       (cond ((eql op ':ok)
+;; 	     (let* ((result (if (= (length --cl-rest--) 1)
+;; 				(car-safe --cl-rest--)
+;; 			      (signal 'wrong-number-of-arguments
+;; 				      (list '(result)
+;; 					    (length --cl-rest--))))))
+;; 	       (slime-repl-insert-result result)))
+;; 	    ((eql op ':abort)
+;; 	     (let* ((condition (if (= (length --cl-rest--) 1)
+;; 				   (car-safe --cl-rest--)
+;; 				 (signal 'wrong-number-of-arguments
+;; 					 (list '(condition)
+;; 					       (length
+;; 						--cl-rest--))))))
+;; 	       (slime-repl-show-abort condition)))
+;; 	    (t (error slime-dcase failed: %S tmp-357)))))\n")
