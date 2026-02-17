@@ -663,14 +663,11 @@ If NEWLINE is true then add a newline at the end of the input."
 
 
 (defun my-pseudoscheme-repl-eval-string (string)
-  (add-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
-  (remove-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+
   (pseudoscheme-rex ()
       ( `(swank-repl:listener-eval ,string)
 	(slime-lisp-package))
     ((:ok result)
-     (remove-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
-     (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
        (pseudoscheme-repl-insert-result result))
     ((:abort condition)
      (remove-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)

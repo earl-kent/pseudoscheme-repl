@@ -745,7 +745,7 @@ output; otherwise the new input is appended."
   (easy-menu-define menubar-pseudoscheme-presentation pseudoscheme-mode-map "Presentations" pseudoscheme-presentation-easy-menu)
   (easy-menu-define menubar-pseudoscheme-presentation pseudoscheme-repl-mode-map "Presentations" pseudoscheme-presentation-easy-menu)
   (easy-menu-define menubar-pseudoscheme-presentation sldb-mode-map "Presentations" pseudoscheme-presentation-easy-menu)
-  (easy-menu-define menubar-pseudoscheme-presentation pseudoscheme-inspector-mode-map "Presentations" pseudoscheme-presentation-easy-menu)
+  ;; (easy-menu-define menubar-pseudoscheme-presentation pseudoscheme-inspector-mode-map "Presentations" pseudoscheme-presentation-easy-menu)
   (easy-menu-add pseudoscheme-presentation-easy-menu 'pseudoscheme-mode-map)
   (easy-menu-add pseudoscheme-presentation-easy-menu 'pseudoscheme-repl-mode-map)
   (easy-menu-add pseudoscheme-presentation-easy-menu 'sldb-mode-map)

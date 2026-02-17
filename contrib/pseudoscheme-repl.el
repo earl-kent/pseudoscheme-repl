@@ -386,7 +386,8 @@ joined together."))
 
 (pseudoscheme-define-keys pseudoscheme-prefix-map
   ("\C-z" 'pseudoscheme-switch-to-output-buffer)
-  ("\M-p" 'pseudoscheme-repl-set-package))
+  ;; ("\M-p" 'pseudoscheme-repl-set-package)
+  )
 
 (pseudoscheme-define-keys pseudoscheme-mode-map
   ("\C-c~" 'pseudoscheme-sync-package-and-default-directory)
@@ -534,41 +535,34 @@ joined together."))
          (pseudoscheme-repl-return-string string))
         (t (pseudoscheme-repl-eval-string string))))
 
-
-;; swank should look something like this:
-;; (let nil
-;;   (slime-dispatch-event
-;;    (list :emacs-rex '(swank-repl:listener-eval "(+ 1 2)")
-;; 	 (slime-lisp-package) slime-current-thread
-;; 	 (lambda (G283)
-;; 	   (slime-dcase G283
-;; 	     ((:ok result) (slime-repl-insert-result result))
-;; 	     ((:abort condition) (slime-repl-show-abort condition)))))))
-
-
-
-
-
 (defun pseudoscheme-lisp-package ()
   "REVISED^4-SCHEME"
   ;; But also could be SCHEME-TRANSLATION, PS-LISP. At least those
   ;; need to be investigated.
   )
 
-
-;; (defun my-test-pseudoscheme-repl-eval-string ()
-;;   (pseudoscheme-dispatch-event
-;;    (list :emacs-rex '(swank-repl:listener-eval "(+ 1 2)") "PS"
-;; 	 (lambda (G387)
-;; 	   (slime-dcase G387
-;; 	     ((:ok result)
-;; 	      (pseudoscheme-repl-insert-result result))
-;; 	     ((:abort condition)
-;; 	      (pseudoscheme-repl-show-abort condition)))))))
-
+(defun my-pseudoscheme-repl-eval-string (string)
+  (add-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
+  (remove-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+  (message "%s\n" string)
+  (pseudoscheme-rex ()
+      ( `(swank-repl:listener-eval
+	  (ps::scheme-eval-from-string ,string))
+       (pseudoscheme-lisp-package))
+      ((:ok result)
+       (remove-hook 'slime-event-hooks
+		    'pseudoscheme-repl-event-hook-function)
+       (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+       (pseudoscheme-repl-insert-result result))
+      ((:abort condition)
+       (remove-hook 'slime-event-hooks
+		    'pseudoscheme-repl-event-hook-function)
+       (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
+       (pseudoscheme-repl-show-abort condition))))
 
 (defun pseudoscheme-repl-eval-string (string)
-  ;; (error "pseudoscheme-repl-eval-string: swank connection not working yet")
+  (add-hook 'slime-event-hooks 'pseudoscheme-repl-event-hook-function)
+  (remove-hook 'slime-event-hooks 'slime-repl-event-hook-function)
   (pseudoscheme-rex ()
       ((if slime-repl-auto-right-margin
            `(swank-repl:listener-eval
@@ -579,9 +573,14 @@ joined together."))
          `(swank-repl:listener-eval ,string))
        (pseudoscheme-lisp-package))
       ((:ok result)
-       ;; Obviously needs to be changed once things are working.
+       (remove-hook 'slime-event-hooks
+		    'pseudoscheme-repl-event-hook-function)
+       (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
        (pseudoscheme-repl-insert-result result))
       ((:abort condition)
+       (remove-hook 'slime-event-hooks
+		    'pseudoscheme-repl-event-hook-function)
+       (add-hook 'slime-event-hooks 'slime-repl-event-hook-function)
        (pseudoscheme-repl-show-abort condition))))
 
 (defun pseudoscheme-repl-insert-result (result)
@@ -1442,25 +1441,10 @@ expansion will be added to the REPL's history.)"
                  (pop pseudoscheme-repl-directory-stack)))))
   (:one-liner "Restore the last saved directory."))
 
-(defpseudoscheme-repl-shortcut nil ("change-package" "!p" "in-package" "in")
-  (:handler 'pseudoscheme-repl-set-package)
-  (:one-liner "Change the current package."))
-
-(defpseudoscheme-repl-shortcut pseudoscheme-repl-push-package ("push-package" "+p")
-  (:handler (lambda (package)
-              (interactive (list (pseudoscheme-read-package-name "Package: ")))
-              (push (pseudoscheme-lisp-package) pseudoscheme-repl-package-stack)
-              (pseudoscheme-repl-set-package package)))
-  (:one-liner "Save the current package and set it to a new one."))
-
-(defpseudoscheme-repl-shortcut pseudoscheme-repl-pop-package ("pop-package" "-p")
-  (:handler (lambda ()
-              (interactive)
-              (if (null pseudoscheme-repl-package-stack)
-                  (message "Package stack is empty.")
-                (pseudoscheme-repl-set-package
-                 (pop pseudoscheme-repl-package-stack)))))
-  (:one-liner "Restore the last saved package."))
+;; - defpseudoscheme-repl-shortcut -- change-package !p
+;; - defpseudoscheme-repl-shortcut pseudoscheme-repl-push-package
+;;     push-package +p
+;; - pseudoscheme-repl-pop-package pop-package -p
 
 (defpseudoscheme-repl-shortcut pseudoscheme-repl-resend ("resend-form")
   (:handler (lambda ()
